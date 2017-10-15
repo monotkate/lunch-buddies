@@ -11,23 +11,35 @@ import (
 )
 
 type worker struct {
+    name string
     email string
     team string
 }
 
-func indices(head []string) (email int, team int, err error) {
-    email = -1
-    team = -1
+const (
+    col1 = "Name"
+    col2 = "Team"
+    col3 = "Email"
+)
+
+// Takes in column names, and returns the location of each according to set
+// headers
+func indices(head []string) (param1 int, param2 int, param3 int, err error) {
+    param1 = -1
+    param2 = -1
+    param3 = -1
     for i, col := range head {
         switch col {
-            case "email":
-                email = i
-            case "team":
-                team = i
+            case col1:
+                param1 = i
+            case col2:
+                param2 = i
+            case col3:
+                param3 = i
         }
     }
-    if email == -1 || team == -1 {
-        err = fmt.Errorf("could not get all columns")
+    if param1 == -1 || param2 == -1 || param3 == -1 {
+        err = fmt.Errorf("Could not get all columns. %v, %v, %v", param1, param2, param3);
     }
     return
 }
@@ -47,13 +59,13 @@ func read(in *string) ([]worker, error) {
     if len(records) < 2 {
         return nil, fmt.Errorf("not enough rows: %v", records)
     }
-    email, team, err := indices(records[0])
+    name, team, email, err := indices(records[0])
     if err != nil {
         return nil, fmt.Errorf("did not have appropriate columns %v, err: %v", records[0], err)
     }
     var workers []worker
     for _, rec := range records[1:] {
-        w := worker{email: rec[email], team: rec[team]}
+        w := worker{name: rec[name], email: rec[email], team: rec[team]}
         glog.V(2).Infof("got worker %v", w)
         workers = append(workers, w)
     }
@@ -127,7 +139,7 @@ func makeBuddies(workers []worker, size *int) [][]string {
 func main() {
     inp := flag.String("input_file", "./tmp/workers.csv", "A csv of emails and teams to import")
     rndm := flag.Bool("randomize", true, "A csv of emails and teams to import")
-    grpSz := flag.Int("group_size", 4, "The number of people in a group")
+    grpSz := flag.Int("group_size", 6, "The number of people in a group")
     rand.Seed(time.Now().UTC().UnixNano())
     flag.Parse()
     workers, err := read(inp)
@@ -146,8 +158,12 @@ func main() {
     glog.V(2).Infof("got workers %v", workers)
     buddies := makeBuddies(workers, grpSz)
     glog.V(2).Infof("got buddy groups %v", buddies)
-    for i, b := range buddies {
-        fmt.Printf("Group %v: %v\n", i, b)
+    for group, buddy := range buddies {
+        fmt.Printf("group %v: ", group);
+        for _, bud := range buddy {
+            fmt.Printf("%v, ", bud)
+        }
+        fmt.Printf("\n");
     }
     glog.Flush()
 }
