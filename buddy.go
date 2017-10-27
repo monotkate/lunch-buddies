@@ -16,35 +16,44 @@ type worker struct {
     team string
 }
 
-const (
-    col1 = "Name"
-    col2 = "Team"
-    col3 = "Email"
+var (
+    cols = []string{
+        "Name",
+        "Team",
+        "Email",
+    }
 )
 
 // Takes in column names, and returns the location of each according to set
 // headers
-func indices(head []string) (param1 int, param2 int, param3 int, err error) {
-    param1 = -1
-    param2 = -1
-    param3 = -1
-    for i, col := range head {
-        switch col {
-            case col1:
-                param1 = i
-            case col2:
-                param2 = i
-            case col3:
-                param3 = i
+func indices(head []string, header bool) (param1 int, param2 int, param3 int, err error) {
+    if header {
+        param1 = -1
+        param2 = -1
+        param3 = -1
+        for i, col := range head {
+            switch col {
+                case cols[0]:
+                    param1 = i
+                case cols[1]:
+                    param2 = i
+                case cols[2]:
+                    param3 = i
+            }
         }
+        if param1 == -1 || param2 == -1 || param3 == -1 {
+            err = fmt.Errorf("Could not get all columns. %v, %v, %v", param1, param2, param3)
+        }
+        return
     }
-    if param1 == -1 || param2 == -1 || param3 == -1 {
-        err = fmt.Errorf("Could not get all columns. %v, %v, %v", param1, param2, param3);
-    }
+
+    param1 = 0;
+    param2 = 1;
+    param3 = 2;
     return
 }
 
-func read(in *string) ([]worker, error) {
+func read(in *string, header bool) ([]worker, error) {
     glog.V(2).Infof("opening file: %v", *in)
     f, err := os.Open(*in)
     if err != nil {
@@ -59,12 +68,16 @@ func read(in *string) ([]worker, error) {
     if len(records) < 2 {
         return nil, fmt.Errorf("not enough rows: %v", records)
     }
-    name, team, email, err := indices(records[0])
+    name, team, email, err := indices(records[0], header)
     if err != nil {
         return nil, fmt.Errorf("did not have appropriate columns %v, err: %v", records[0], err)
     }
     var workers []worker
-    for _, rec := range records[1:] {
+    start := 0
+    if header {
+        start = 1
+    }
+    for _, rec := range records[start:] {
         w := worker{name: rec[name], email: rec[email], team: rec[team]}
         glog.V(2).Infof("got worker %v", w)
         workers = append(workers, w)
@@ -140,9 +153,11 @@ func main() {
     inp := flag.String("input_file", "./tmp/workers.csv", "A csv of emails and teams to import")
     rndm := flag.Bool("randomize", true, "A csv of emails and teams to import")
     grpSz := flag.Int("group_size", 6, "The number of people in a group")
+    header := flag.Bool("header", true, "Has a header row")
+    
     rand.Seed(time.Now().UTC().UnixNano())
     flag.Parse()
-    workers, err := read(inp)
+    workers, err := read(inp, *header)
     if err != nil {
         glog.Flush()
         glog.Fatalf("Could not read: %v", err)
